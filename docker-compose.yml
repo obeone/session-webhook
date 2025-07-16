@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  session-webhook:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - API_KEY=${API_KEY:-your-secure-api-key-here}
+      - WEBHOOK_URL=${WEBHOOK_URL:-https://example.com/signal}
+      - SESSION_MNEMONIC=${SESSION_MNEMONIC}
+      - SESSION_DISPLAY_NAME=${SESSION_DISPLAY_NAME:-Session Webhook Bot}
+      - STORAGE_FILE=/app/data/session-storage.db
+      - LOG_LEVEL=debug
+    volumes:
+      - session-data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Example webhook receiver for testing
+  webhook-receiver:
+    build: .
+    command: bun run example-webhook-receiver.ts
+    ports:
+      - "3000:3000"
+    environment:
+      - RECEIVER_PORT=3000
+    profiles:
+      - debug
+
+volumes:
+  session-data:

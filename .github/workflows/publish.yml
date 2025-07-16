@@ -1,0 +1,68 @@
+# This workflow builds and publishes a Docker image to GitHub Container Registry and Docker Hub.
+#
+# On push to main:
+#   - Builds and pushes the image with the 'latest' tag.
+# On a new release:
+#   - Builds and pushes the image with the release version as the tag.
+# On a pull request:
+#   - Builds the image but does not push it.
+
+name: Publish Docker image
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  release:
+    types: [created]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ghcr.io/obeone/session-workflow
+            docker.io/obeoneorg/session-workflow
+          tags: |
+            # set 'latest' tag for default branch
+            type=raw,value=latest,enable={{is_default_branch}}
+            # set version tag for releases
+            type=ref,event=tag
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: |
+            linux/arm64
+            linux/amd64

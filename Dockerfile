@@ -1,23 +1,27 @@
 # syntax=docker/dockerfile:1
-FROM oven/bun:1-alpine
+
+FROM oven/bun:1.1.14-alpine AS base
 
 # Set working directory
 WORKDIR /app
 
-# Copy package files
-COPY --link package.json bun.lockb* ./
+# Create non-root user for secure runtime
+RUN addgroup -g 564 -S app && adduser -u 564 -S app -G app && \
+    chown -R app:app /app
 
-# Install dependencies
-RUN  bun install --frozen-lockfile || bun install
+USER app
 
-# Copy application files
-COPY --link session-webhook-server.ts .
+# Copy only manifest files first for better cache usage
+COPY --link --chown=564:564 package.json bun.lockb* ./
 
-# Create data directory for storage
-RUN mkdir -p /app/data
+# Install dependencies using BuildKit cache
+RUN --mount=type=cache,target=/root/.bun \
+    bun install --frozen-lockfile || bun install
 
-# Expose port
+# Copy application source code
+COPY --link --chown=564:564 session-webhook-server.ts .
+
 EXPOSE 8080
 
-# Run the application
+# Start the app
 CMD ["bun", "run", "start"]

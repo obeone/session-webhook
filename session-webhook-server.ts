@@ -16,7 +16,7 @@
  * - POST /removeReaction - Remove a reaction from a message
  * - GET /status - Health check endpoint
  * - Forwards all Session events to external webhook
- * - API key authentication via X-API-Key header
+ * - Bearer token authentication via Authorization header
  */
 
 import express from 'express';
@@ -43,7 +43,7 @@ const logger = winston.createLogger({
 // Load environment variables
 const config = {
   port: parseInt(process.env.PORT || '8080'),
-  apiKey: process.env.API_KEY || 'your-secure-api-key-here',
+  bearerToken: process.env.BEARER_TOKEN || 'your-secure-bearer-token-here',
   webhookUrl: process.env.WEBHOOK_URL || 'https://example.com/signal',
   sessionMnemonic: process.env.SESSION_MNEMONIC || '',
   sessionDisplayName: process.env.SESSION_DISPLAY_NAME || 'Session Webhook Bot',
@@ -64,24 +64,34 @@ app.use(express.json({ limit: '50mb' })); // Increase limit for attachments
 let session: Session;
 
 /**
- * Middleware to verify API key.
- * Checks the X-API-Key header against the configured API key.
- * 
+ * Middleware to verify Bearer token.
+ * Checks the Authorization header for a valid Bearer token.
+ *
  * @param req - Express request object
  * @param res - Express response object
  * @param next - Express next middleware function
  */
-function verifyApiKey(req: Request, res: Response, next: NextFunction): void {
-  const providedKey = req.headers['x-api-key'];
+function verifyBearerToken(req: Request, res: Response, next: NextFunction): void {
+  const authHeader = req.headers['authorization'];
   
-  if (!providedKey || providedKey !== config.apiKey) {
-    res.status(401).json({ 
-      error: 'Unauthorized', 
-      message: 'Invalid or missing API key' 
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    res.status(401).json({
+      error: 'Unauthorized',
+      message: 'Bearer token is missing or malformed'
     });
     return;
   }
-  
+
+  const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+
+  if (token !== config.bearerToken) {
+    res.status(401).json({
+      error: 'Unauthorized',
+      message: 'Invalid Bearer token'
+    });
+    return;
+  }
+
   next();
 }
 
@@ -195,7 +205,7 @@ app.get('/status', (req: Request, res: Response) => {
  *   "text": "message content"
  * }
  */
-app.post('/sendMessage', verifyApiKey, async (req: Request, res: Response) => {
+app.post('/sendMessage', verifyBearerToken, async (req: Request, res: Response) => {
   try {
     const { to, text } = req.body;
     
@@ -242,7 +252,7 @@ app.post('/sendMessage', verifyApiKey, async (req: Request, res: Response) => {
  *   "data": "base64_encoded_file_data"
  * }
  */
-app.post('/sendAttachment', verifyApiKey, async (req: Request, res: Response) => {
+app.post('/sendAttachment', verifyBearerToken, async (req: Request, res: Response) => {
   try {
     const { to, filename, mimeType, data } = req.body;
     
@@ -294,7 +304,7 @@ app.post('/sendAttachment', verifyApiKey, async (req: Request, res: Response) =>
  *   "hash": "message_hash"
  * }
  */
-app.post('/deleteMessage', verifyApiKey, async (req: Request, res: Response) => {
+app.post('/deleteMessage', verifyBearerToken, async (req: Request, res: Response) => {
   try {
     const { to, timestamp, hash } = req.body;
 
@@ -361,7 +371,7 @@ app.post('/markAsRead', verifyApiKey, async (req: Request, res: Response) => {
  *   "displayName": "New Display Name"
  * }
  */
-app.post('/setDisplayName', verifyApiKey, async (req: Request, res: Response) => {
+app.post('/setDisplayName', verifyBearerToken, async (req: Request, res: Response) => {
   try {
     const { displayName } = req.body;
 
@@ -393,7 +403,7 @@ app.post('/setDisplayName', verifyApiKey, async (req: Request, res: Response) =>
  *   "avatar": "base64_encoded_image_data"
  * }
  */
-app.post('/setAvatar', verifyApiKey, async (req: Request, res: Response) => {
+app.post('/setAvatar', verifyBearerToken, async (req: Request, res: Response) => {
   try {
     const { avatar } = req.body;
 
@@ -530,7 +540,7 @@ app.post('/acceptRequest', verifyApiKey, async (req: Request, res: Response) => 
  *   "timestamp": 1234567890
  * }
  */
-app.post('/notifyScreenshot', verifyApiKey, async (req: Request, res: Response) => {
+app.post('/notifyScreenshot', verifyBearerToken, async (req: Request, res: Response) => {
   try {
     const { to, timestamp } = req.body;
 
@@ -563,7 +573,7 @@ app.post('/notifyScreenshot', verifyApiKey, async (req: Request, res: Response) 
  *   "timestamp": 1234567890
  * }
  */
-app.post('/notifyMediaSaved', verifyApiKey, async (req: Request, res: Response) => {
+app.post('/notifyMediaSaved', verifyBearerToken, async (req: Request, res: Response) => {
   try {
     const { to, timestamp } = req.body;
 
@@ -598,7 +608,7 @@ app.post('/notifyMediaSaved', verifyApiKey, async (req: Request, res: Response) 
  *   "author": "author_session_id"
  * }
  */
-app.post('/addReaction', verifyApiKey, async (req: Request, res: Response) => {
+app.post('/addReaction', verifyBearerToken, async (req: Request, res: Response) => {
   try {
     const { to, timestamp, emoji, author } = req.body;
 
@@ -633,7 +643,7 @@ app.post('/addReaction', verifyApiKey, async (req: Request, res: Response) => {
  *   "author": "author_session_id"
  * }
  */
-app.post('/removeReaction', verifyApiKey, async (req: Request, res: Response) => {
+app.post('/removeReaction', verifyBearerToken, async (req: Request, res: Response) => {
   try {
     const { to, timestamp, emoji, author } = req.body;
 

@@ -43,7 +43,7 @@ This makes it easy to integrate Session messaging capabilities into other applic
 
 - **🌐 RESTful API**: Control Session actions with simple HTTP requests.
 - **📡 Event Forwarding**: Get real-time notifications for all Session activity.
-- **🔒 Secure**: Protect your API endpoints with an API key.
+- **🔒 Secure**: Protect your API endpoints with a Bearer token.
 - **💾 Persistent Storage**: Uses a file-based storage system to maintain the Session identity across restarts.
 - **🚀 Easy to Deploy**: Run it locally with `bun` or as a Docker container.
 
@@ -84,7 +84,7 @@ For complete n8n integration, install both this webhook server and the n8n-nodes
     cp .env.example .env
     ```
 
-    Fill in the variables, especially `SESSION_MNEMONIC` and `API_KEY`.
+    Fill in the variables, especially `SESSION_MNEMONIC` and `BEARER_TOKEN`.
 
 3. **Build and run with Docker Compose:**
 
@@ -160,7 +160,7 @@ The server is configured using environment variables. Create a `.env` file in th
 | Variable | Description | Default Value | Required |
 | :--- | :--- | :--- | :--- |
 | `PORT` | The port on which the server will listen. | `8080` | No |
-| `API_KEY` | A secret key to authorize API requests. | `your-secure-api-key-here` | Yes |
+| `BEARER_TOKEN` | A secret token to authorize API requests. | `your-secure-bearer-token-here` | Yes |
 | `WEBHOOK_URL` | The external URL to which Session events will be forwarded. | `https://example.com/hook` | Yes |
 | `SESSION_MNEMONIC` | The 13-word recovery phrase for your Session account. | (none) | Yes |
 | `SESSION_DISPLAY_NAME` | The display name for the Session bot. | `Session Webhook Bot` | No |
@@ -173,7 +173,9 @@ The server is configured using environment variables. Create a `.env` file in th
 
 ### 🔑 Authentication
 
-All endpoints (except `/status`) are protected. You must provide the API key in the `X-API-Key` header with every request.
+All endpoints (except `/status`) are protected. You must provide the Bearer token in the `Authorization` header with every request.
+
+Example: `Authorization: Bearer <YOUR_BEARER_TOKEN>`
 
 ### 🔗 Endpoints
 
@@ -219,7 +221,7 @@ Sends a text message to a Session ID.
     ```bash
     curl -X POST http://localhost:8080/sendMessage \
       -H "Content-Type: application/json" \
-      -H "X-API-Key: <YOUR_API_KEY>" \
+      -H "Authorization: Bearer <YOUR_BEARER_TOKEN>" \
       -d '{
             "to": "<RECIPIENT_SESSION_ID>",
             "text": "Hello, world!"
@@ -259,7 +261,7 @@ Sends a file attachment to a Session ID. The file data must be Base64 encoded.
     ```bash
     curl -X POST http://localhost:8080/sendAttachment \
       -H "Content-Type: application/json" \
-      -H "X-API-Key: <YOUR_API_KEY>" \
+      -H "Authorization: Bearer <YOUR_BEARER_TOKEN>" \
       -d '{
             "to": "<RECIPIENT_SESSION_ID>",
             "filename": "test.txt",

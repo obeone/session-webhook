@@ -4,7 +4,7 @@ info:
   description: |
     API for interacting with a Session.js client via a webhook server. 
     It allows sending messages, managing profile information, and handling various Session events.
-    All protected endpoints require an API key sent in the `X-API-Key` header.
+    All protected endpoints require a Bearer token sent in the `Authorization` header.
   version: "1.0.0"
 servers:
   - url: http://localhost:8080
@@ -12,10 +12,10 @@ servers:
 
 components:
   securitySchemes:
-    ApiKeyAuth:
-      type: apiKey
-      in: header
-      name: X-API-Key
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
 
   schemas:
     Error:
@@ -198,7 +198,7 @@ components:
           type: string
 
 security:
-  - ApiKeyAuth: []
+  - BearerAuth: []
 
 paths:
   /status:
@@ -242,7 +242,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "401":
-          description: "Unauthorized - Invalid or missing API key."
+          description: "Unauthorized - Invalid or missing Bearer token."
           content:
             application/json:
               schema:
@@ -280,7 +280,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "401":
-          description: "Unauthorized."
+          description: "Unauthorized - Invalid or missing Bearer token."
           content:
             application/json:
               schema:
@@ -318,7 +318,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "401":
-          description: "Unauthorized."
+          description: "Unauthorized - Invalid or missing Bearer token."
           content:
             application/json:
               schema:
@@ -356,7 +356,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "401":
-          description: "Unauthorized."
+          description: "Unauthorized - Invalid or missing Bearer token."
           content:
             application/json:
               schema:
@@ -394,7 +394,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "401":
-          description: "Unauthorized."
+          description: "Unauthorized - Invalid or missing Bearer token."
           content:
             application/json:
               schema:
@@ -432,7 +432,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "401":
-          description: "Unauthorized."
+          description: "Unauthorized - Invalid or missing Bearer token."
           content:
             application/json:
               schema:
@@ -470,7 +470,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "401":
-          description: "Unauthorized."
+          description: "Unauthorized - Invalid or missing Bearer token."
           content:
             application/json:
               schema:
@@ -508,7 +508,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "401":
-          description: "Unauthorized."
+          description: "Unauthorized - Invalid or missing Bearer token."
           content:
             application/json:
               schema:
@@ -546,7 +546,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "401":
-          description: "Unauthorized."
+          description: "Unauthorized - Invalid or missing Bearer token."
           content:
             application/json:
               schema:

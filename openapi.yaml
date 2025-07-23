@@ -1,0 +1,559 @@
+openapi: 3.1.0
+info:
+  title: "Session.js Webhook Server API"
+  description: |
+    API for interacting with a Session.js client via a webhook server. 
+    It allows sending messages, managing profile information, and handling various Session events.
+    All protected endpoints require an API key sent in the `X-API-Key` header.
+  version: "1.0.0"
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: A short error code or type.
+          example: "Bad Request"
+        message:
+          type: string
+          description: A detailed error message.
+          example: "Field 'to' is required"
+
+    SendMessageRequest:
+      type: object
+      required:
+        - to
+        - text
+      properties:
+        to:
+          type: string
+          description: The Session ID of the recipient.
+          example: "05xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        text:
+          type: string
+          description: The content of the text message.
+          example: "Hello, world!"
+
+    SendMessageResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        messageHash:
+          type: string
+          description: The hash of the sent message.
+        syncMessageHash:
+          type: string
+          description: The hash of the sync message.
+        timestamp:
+          type: integer
+          format: int64
+          description: The timestamp of the message.
+
+    SendAttachmentRequest:
+      type: object
+      required:
+        - to
+        - filename
+        - mimeType
+        - data
+      properties:
+        to:
+          type: string
+          description: The Session ID of the recipient.
+        filename:
+          type: string
+          description: The name of the file.
+          example: "image.jpg"
+        mimeType:
+          type: string
+          description: The MIME type of the file.
+          example: "image/jpeg"
+        data:
+          type: string
+          format: base64
+          description: The base64-encoded content of the file.
+
+    DeleteMessageRequest:
+      type: object
+      required:
+        - to
+        - timestamp
+        - hash
+      properties:
+        to:
+          type: string
+          description: The Session ID of the conversation partner.
+        timestamp:
+          type: integer
+          format: int64
+          description: The timestamp of the message to delete.
+        hash:
+          type: string
+          description: The hash of the message to delete.
+
+    SetDisplayNameRequest:
+      type: object
+      required:
+        - displayName
+      properties:
+        displayName:
+          type: string
+          description: The new display name for the profile.
+          example: "My Awesome Bot"
+
+    SetAvatarRequest:
+      type: object
+      required:
+        - avatar
+      properties:
+        avatar:
+          type: string
+          format: base64
+          description: The base64-encoded image for the new avatar.
+
+    NotifyScreenshotRequest:
+      type: object
+      required:
+        - to
+      properties:
+        to:
+          type: string
+          description: The Session ID of the conversation partner to notify.
+        timestamp:
+          type: integer
+          format: int64
+          description: The timestamp of the message that was screenshotted (optional, for reference).
+
+    NotifyMediaSavedRequest:
+      type: object
+      required:
+        - to
+        - timestamp
+      properties:
+        to:
+          type: string
+          description: The Session ID of the conversation partner to notify.
+        timestamp:
+          type: integer
+          format: int64
+          description: The timestamp of the message containing the media that was saved.
+
+    ReactionRequest:
+      type: object
+      required:
+        - to
+        - timestamp
+        - emoji
+        - author
+      properties:
+        to:
+          type: string
+          description: The Session ID of the conversation partner.
+        timestamp:
+          type: integer
+          format: int64
+          description: The timestamp of the message to react to.
+        emoji:
+          type: string
+          description: The emoji used for the reaction.
+          example: "👍"
+        author:
+          type: string
+          description: The Session ID of the message author.
+
+    StatusResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        sessionId:
+          type: string
+        uptime:
+          type: number
+          description: Server uptime in seconds.
+        timestamp:
+          type: string
+          format: date-time
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+
+security:
+  - ApiKeyAuth: []
+
+paths:
+  /status:
+    get:
+      summary: "Get Server Status"
+      description: "Provides a health check endpoint to verify if the server is running and the Session client is initialized."
+      tags:
+        - Status
+      security: [] # This endpoint is public
+      responses:
+        "200":
+          description: "Server is running successfully."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusResponse"
+
+  /sendMessage:
+    post:
+      summary: "Send a Text Message"
+      description: "Sends a plain text message to a specified Session ID."
+      tags:
+        - Messaging
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendMessageRequest"
+      responses:
+        "200":
+          description: "Message sent successfully."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SendMessageResponse"
+        "400":
+          description: "Bad Request - Missing required fields."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: "Unauthorized - Invalid or missing API key."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: "Internal Server Error."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /sendAttachment:
+    post:
+      summary: "Send an Attachment"
+      description: "Sends a file attachment to a specified Session ID. The file must be base64-encoded."
+      tags:
+        - Messaging
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendAttachmentRequest"
+      responses:
+        "200":
+          description: "Attachment sent successfully."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SendMessageResponse"
+        "400":
+          description: "Bad Request - Missing required fields."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: "Unauthorized."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: "Internal Server Error."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /deleteMessage:
+    post:
+      summary: "Delete a Message"
+      description: "Deletes a previously sent message for all recipients."
+      tags:
+        - Messaging
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeleteMessageRequest"
+      responses:
+        "200":
+          description: "Message deleted successfully."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          description: "Bad Request."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: "Unauthorized."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: "Internal Server Error."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /setDisplayName:
+    post:
+      summary: "Set Profile Display Name"
+      description: "Updates the display name for the Session profile associated with this server."
+      tags:
+        - Profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetDisplayNameRequest"
+      responses:
+        "200":
+          description: "Display name updated successfully."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          description: "Bad Request."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: "Unauthorized."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: "Internal Server Error."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /setAvatar:
+    post:
+      summary: "Set Profile Avatar"
+      description: "Updates the avatar for the Session profile. The image must be base64-encoded."
+      tags:
+        - Profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetAvatarRequest"
+      responses:
+        "200":
+          description: "Avatar updated successfully."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          description: "Bad Request."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: "Unauthorized."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: "Internal Server Error."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /notifyScreenshot:
+    post:
+      summary: "Notify of Screenshot"
+      description: "Sends a notification to a conversation partner that a screenshot has been taken."
+      tags:
+        - Notifications
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotifyScreenshotRequest"
+      responses:
+        "200":
+          description: "Screenshot notification sent."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          description: "Bad Request."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: "Unauthorized."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: "Internal Server Error."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /notifyMediaSaved:
+    post:
+      summary: "Notify of Media Saved"
+      description: "Sends a notification to a conversation partner that media from a message has been saved."
+      tags:
+        - Notifications
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotifyMediaSavedRequest"
+      responses:
+        "200":
+          description: "Media saved notification sent."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          description: "Bad Request."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: "Unauthorized."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: "Internal Server Error."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /addReaction:
+    post:
+      summary: "Add a Reaction"
+      description: "Adds an emoji reaction to a specific message."
+      tags:
+        - Messaging
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReactionRequest"
+      responses:
+        "200":
+          description: "Reaction added successfully."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          description: "Bad Request."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: "Unauthorized."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: "Internal Server Error."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /removeReaction:
+    post:
+      summary: "Remove a Reaction"
+      description: "Removes a previously added emoji reaction from a specific message."
+      tags:
+        - Messaging
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReactionRequest"
+      responses:
+        "200":
+          description: "Reaction removed successfully."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          description: "Bad Request."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: "Unauthorized."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: "Internal Server Error."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"

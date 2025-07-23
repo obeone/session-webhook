@@ -48,8 +48,8 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ghcr.io/obeone/session-workflow
-            docker.io/obeoneorg/session-workflow
+            ghcr.io/obeone/session-webhook
+            docker.io/obeoneorg/session-webhook
           tags: |
             # Set 'latest' tag for the default branch
             type=raw,value=latest,enable={{is_default_branch}}
@@ -79,8 +79,8 @@ jobs:
         env:
           COSIGN_EXPERIMENTAL: "1"
         run: |
-          cosign sign --yes "ghcr.io/obeone/session-workflow@${{ steps.docker_build.outputs.digest }}"
-          cosign sign --yes "docker.io/obeoneorg/session-workflow@${{ steps.docker_build.outputs.digest }}"
+          cosign sign --yes "ghcr.io/obeone/session-webhook@${{ steps.docker_build.outputs.digest }}"
+          cosign sign --yes "docker.io/obeoneorg/session-webhook@${{ steps.docker_build.outputs.digest }}"
 
       - name: Update Docker Hub description
         if: github.event_name != 'pull_request'
@@ -88,4 +88,4 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-          repository: obeoneorg/session-workflow
+          repository: obeoneorg/session-webhook

@@ -1,38 +1,50 @@
-version: '3.8'
+# Docker Compose file for running the Session Webhook service.
+# This file defines the service, its configuration, and dependencies.
 
 services:
+  # Defines the main application service.
   session-webhook:
-    build: .
+    # Specifies the Docker image to use for the container.
+    image: obeoneorg/session-webhook
+    # Maps port 8080 on the host to port 8080 in the container.
     ports:
       - "8080:8080"
+    # Sets environment variables for the container.
+    # These can be overridden by creating a .env file.
     environment:
+      # The port the application will listen on.
       - PORT=8080
+      # A secure API key for authenticating requests.
       - API_KEY=${API_KEY:-your-secure-api-key-here}
+      # The URL to which Signal messages will be forwarded.
       - WEBHOOK_URL=${WEBHOOK_URL:-https://example.com/signal}
+      # The Session mnemonic for the bot's account.
       - SESSION_MNEMONIC=${SESSION_MNEMONIC}
+      # The display name for the Session bot.
       - SESSION_DISPLAY_NAME=${SESSION_DISPLAY_NAME:-Session Webhook Bot}
+      # The path to the storage file for session data.
       - STORAGE_FILE=/app/data/session-storage.db
+      # The logging level for the application (e.g., debug, info, warn, error).
       - LOG_LEVEL=debug
+    # Mounts a named volume to persist session data.
     volumes:
       - session-data:/app/data
+    # Configures the restart policy for the container.
+    # 'unless-stopped' ensures it restarts unless manually stopped.
     restart: unless-stopped
+    # Defines a health check to ensure the service is running correctly.
     healthcheck:
+      # The command to run to check the service's health.
       test: ["CMD", "curl", "-f", "http://localhost:8080/status"]
+      # How often to run the health check.
       interval: 30s
+      # The maximum time to wait for the health check to complete.
       timeout: 10s
+      # The number of consecutive failures before marking the container as unhealthy.
       retries: 3
+      # The time to wait after the container starts before running the first health check.
       start_period: 40s
 
-  # Optional: Example webhook receiver for testing
-  webhook-receiver:
-    build: .
-    command: bun run example-webhook-receiver.ts
-    ports:
-      - "3000:3000"
-    environment:
-      - RECEIVER_PORT=3000
-    profiles:
-      - debug
-
+# Defines the named volume used for data persistence.
 volumes:
   session-data:

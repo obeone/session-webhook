@@ -1,19 +1,17 @@
-# This workflow builds and publishes a Docker image to GitHub Container Registry and Docker Hub.
+# This workflow builds and publishes a Docker image to the GitHub Container Registry and Docker Hub.
 #
-# On push to main:
-#   - Builds and pushes the image with the 'latest' tag.
-# On a new release:
-#   - Builds and pushes the image with the release version as the tag.
-# On a pull request:
-#   - Builds the image but does not push it.
+# It is triggered on the following events:
+# - A push to the "main" branch, which builds and pushes the image with the 'latest' tag.
+# - The creation of a new release, which builds and pushes the image with the release version as the tag.
+# - A pull request to the "main" branch, which builds the image but does not push it.
 
-name: Publish Docker image
+name: Publish Docker Image
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
   release:
     types: [created]
 
@@ -23,10 +21,14 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write # Required for signing the images with cosign.
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -40,9 +42,7 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-          
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3 
+
       - name: Extract Docker metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -51,12 +51,13 @@ jobs:
             ghcr.io/obeone/session-workflow
             docker.io/obeoneorg/session-workflow
           tags: |
-            # set 'latest' tag for default branch
+            # Set 'latest' tag for the default branch
             type=raw,value=latest,enable={{is_default_branch}}
-            # set version tag for releases
+            # Set version tag for releases
             type=ref,event=tag
 
       - name: Build and push Docker image
+        id: docker_build
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -68,19 +69,18 @@ jobs:
           platforms: |
             linux/arm64
             linux/amd64
-  
-      - name: Set up cosign
+
+      - name: Install cosign
         if: github.event_name != 'pull_request'
         uses: sigstore/cosign-installer@v3
 
-      - name: Sign the container image with cosign
+      - name: Sign container images
         if: github.event_name != 'pull_request'
-        run: |
-          cosign sign --yes ghcr.io/obeone/session-workflow@${DIGEST}
-          cosign sign --yes docker.io/obeoneorg/session-workflow@${DIGEST}
         env:
-          COSIGN_EXPERIMENTAL: true
-          DIGEST: ${{ steps.docker_build.outputs.digest }}
+          COSIGN_EXPERIMENTAL: "1"
+        run: |
+          cosign sign --yes "ghcr.io/obeone/session-workflow@${{ steps.docker_build.outputs.digest }}"
+          cosign sign --yes "docker.io/obeoneorg/session-workflow@${{ steps.docker_build.outputs.digest }}"
 
       - name: Update Docker Hub description
         if: github.event_name != 'pull_request'
@@ -88,4 +88,4 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-          repository: obeoneorg/check-tls
+          repository: obeoneorg/session-workflow
